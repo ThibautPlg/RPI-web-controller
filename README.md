@@ -16,6 +16,7 @@ Please note that it's made to work with Deezer, but the buttons are also working
 ## What you need
 - `php`, obviously
 - `playerctl` if not already installed on your Raspberry
+- `amixer`  if not already installed on your Raspberry
 
 I recommend using the deezer custom desktop build by **siphomateke**. [siphomateke/deezer](https://github.com/siphomateke/deezer)
 

@@ -2,6 +2,7 @@
 
 if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 	$actions = $_GET['action'];
+	$data = $_GET['data'] ?? "50";
 
 	if(!is_array($actions)) {
 		$actions = [$actions];
@@ -12,9 +13,21 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 			exec("playerctl $action", $result);
 			sleep(1);
 		}
+		if(in_array($action, ["volume"])) {
+			if(preg_match('/\d{1,3}/', $data)){
+				exec("amixer set Master ".$data."%");
+			}
+		}
+		
 		exec("playerctl metadata", $result);
 		sleep(1); //sleep because the "status" results takes some time to be updated by playerctl
 		exec("playerctl status", $result);
+		// Get the volume
+		exec("amixer scontents |grep 'Master' -a5", $volumeGet);
+		if (!empty($volumeGet) && sizeof($volumeGet) === 6) {
+			preg_match('/\[(\d{1,3})\%\]/m', $volumeGet[5], $volumeLevel);
+			$result["volume"] = $volumeLevel[1];
+		}
 	}
 	header('Content-Type: application/json');
 	echo(json_encode($result));
@@ -46,6 +59,9 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 					</div>
 				</header>
 				<div class="grid">
+					<input id="volume" onchange="mediaAction('volume', this.value)" type="range" min="0" max="100" value="50" name="range">
+				</div>
+				<div class="grid mobile-grid">
 					<div>
 						<button id="prev" onclick="mediaAction('previous')" type="button"><<</button>
 					</div>
@@ -72,7 +88,8 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 			mediaAction("metadata"); //But do it a first time on landing :)
 			setInterval(function(){mediaAction("metadata");}, 30000);
 
-			function mediaAction(action) {  
+			function mediaAction(action, data = "") {
+				if(data !== "") { action = action+"&data="+data;}  
 				var xhr = new XMLHttpRequest();
 				xhr.open( "GET", "index.php?action="+action, true );
 				xhr.onload = function () {
@@ -95,6 +112,8 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 				document.getElementById("titleDom").innerHTML = data[1].match(/.*title(.*)/)[1]+" - "+data[3].match(/.*artist(.*)/)[1];
 				document.getElementById("album").innerHTML = data[2].match(/.*album(.*)/)[1];
 				document.getElementById("img").src = data[4].match(/.*artUrl(.*)/)[1];
+				document.getElementById("volume").value = data.volume;
+
 
 				if(!!data[5] && data[5] === "Playing") {
 					document.getElementById("play").classList.add("secondary");
@@ -119,7 +138,22 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 			}
 
 		</script>
+		<!-- General color style -->
 		<style>
+			:root {
+			<?php
+			// Random color on start
+				$colors = ["#e53935", "#d81b60", "#8e24aa", "#1e88e5",
+				"#039be5", "#43a047", "#c0ca33", " #ffb300", "#fdd835"];
+				echo "--primary: ". $colors[array_rand($colors)] . ";";
+			?>
+			--range-thumb-color: var(--primary);
+			}
+			
+		</style>
+		<!-- General DOM style -->
+		<style>
+			/* ALL */
 			.switcher {
 				position: fixed;
 				right: calc(var(--spacing) / 2);
@@ -137,6 +171,33 @@ if(isset($_GET['action']) && !!$_GET['action'] && is_string($_GET['action'])){
 				bottom:0;
 				margin: 0;
 				padding: 5px !important;
+			}
+			img {
+				margin: auto;
+				display: block;
+			}
+			/* Mobile */
+			@media (max-device-width: 600px) {
+				.container {
+					padding-top:5px;
+				}
+				article {
+					margin-top: 0;
+					padding: 5px;
+				}
+				img {
+					max-width: 33%;
+				}
+				.mobile-grid {
+					display: flex;
+					justify-content: space-between;
+  					flex-wrap: nowrap;
+					width: 100%;
+				}
+				.mobile-grid > div {
+					float: left;
+					width: 24%;
+				}
 			}
 		</style>
 	</body>
